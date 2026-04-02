@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>De Soto's Expedition Through the Southeast (1539–1543)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Georgia, 'Times New Roman', serif; background: #2c1f0e; color: #f0e6d3; }
+
+    #header {
+      background: linear-gradient(135deg, #1a0e05 0%, #3d2510 50%, #1a0e05 100%);
+      border-bottom: 2px solid #8b6914;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #header .crest {
+      font-size: 2.4em;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+    }
+    #header h1 {
+      font-size: 1.35em;
+      color: #e8c87a;
+      text-shadow: 1px 1px 3px #000;
+      line-height: 1.3;
+    }
+    #header p {
+      font-size: 0.82em;
+      color: #b89a5a;
+      margin-top: 2px;
+    }
+
+    #layout { display: flex; height: calc(100vh - 82px); }
+
+    #map { flex: 1; }
+
+    #sidebar {
+      width: 320px;
+      background: linear-gradient(180deg, #1e1208 0%, #2a1a0a 100%);
+      border-left: 2px solid #8b6914;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar h2 {
+      background: #3d2510;
+      border-bottom: 1px solid #8b6914;
+      color: #e8c87a;
+      font-size: 0.9em;
+      letter-spacing: 0.08em;
+      padding: 10px 14px;
+      text-transform: uppercase;
+    }
+
+    .stop-card {
+      border-bottom: 1px solid #3d2510;
+      cursor: pointer;
+      padding: 10px 14px;
+      transition: background 0.15s;
+    }
+    .stop-card:hover { background: #3d2510; }
+    .stop-card.active { background: #4a2e10; border-left: 3px solid #e8c87a; }
+
+    .stop-num {
+      background: #8b6914;
+      border-radius: 50%;
+      color: #fff;
+      display: inline-block;
+      font-size: 0.7em;
+      font-weight: bold;
+      height: 20px;
+      line-height: 20px;
+      margin-right: 6px;
+      text-align: center;
+      width: 20px;
+    }
+    .stop-name { color: #e8c87a; font-size: 0.92em; font-weight: bold; }
+    .stop-people { color: #c4a56a; font-size: 0.78em; margin-top: 3px; }
+    .stop-date { color: #8a7050; font-size: 0.72em; margin-top: 2px; }
+
+    #legend {
+      background: #1e1208;
+      border-top: 2px solid #8b6914;
+      padding: 12px 14px;
+      margin-top: auto;
+    }
+    #legend h3 { color: #e8c87a; font-size: 0.8em; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .legend-item { align-items: center; display: flex; font-size: 0.75em; gap: 8px; margin-bottom: 5px; color: #c4a56a; }
+    .legend-dot { border-radius: 50%; flex-shrink: 0; height: 12px; width: 12px; }
+    .legend-line { flex-shrink: 0; height: 3px; width: 24px; }
+
+    /* Leaflet popup styling */
+    .leaflet-popup-content-wrapper {
+      background: #1e1208;
+      border: 2px solid #8b6914;
+      border-radius: 4px;
+      color: #f0e6d3;
+      font-family: Georgia, serif;
+      max-width: 280px;
+    }
+    .leaflet-popup-tip { background: #8b6914; }
+    .popup-title { color: #e8c87a; font-size: 1em; font-weight: bold; margin-bottom: 4px; }
+    .popup-people { color: #d4a855; font-size: 0.82em; margin-bottom: 4px; }
+    .popup-date { color: #9a8060; font-size: 0.75em; margin-bottom: 6px; }
+    .popup-desc { color: #c8b898; font-size: 0.78em; line-height: 1.45; }
+    .popup-battle { color: #e05050; font-size: 0.75em; margin-top: 5px; font-style: italic; }
+    .popup-peaceful { color: #50c060; font-size: 0.75em; margin-top: 5px; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="crest">⚔️</div>
+  <div>
+    <h1>De Soto's Expedition Through the Southeast, 1539–1543</h1>
+    <p>Hernando de Soto &bull; ~600 men &bull; 4,000+ miles &bull; First Europeans to cross the Mississippi River</p>
+  </div>
+</div>
+
+<div id="layout">
+  <div id="map"></div>
+  <div id="sidebar">
+    <h2>Expedition Stops</h2>
+    <div id="stop-list"></div>
+    <div id="legend">
+      <h3>Legend</h3>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#e8c87a;border:2px solid #8b6914;"></div>
+        <span>Expedition stop / encampment</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#e05050;border:2px solid #8b0000;"></div>
+        <span>Major battle</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#4a90d9;border:2px solid #1a5090;"></div>
+        <span>De Soto's death &amp; burial</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#e8a030;"></div>
+        <span>Route of the expedition</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const stops = [
+  {
+    id: 1,
+    name: "Ocita / Tampa Bay Landing",
+    lat: 27.85, lng: -82.48,
+    people: "Ocita chiefdom (Timucuan)",
+    date: "May–June 1539",
+    desc: "De Soto landed with approximately 600 soldiers, 220 horses, and 300 pigs. Took Juan Ortiz, a Spanish survivor from an earlier expedition, as interpreter. Established initial base of operations.",
+    type: "stop"
+  },
+  {
+    id: 2,
+    name: "Ocale / Timucua Territory",
+    lat: 29.18, lng: -82.13,
+    people: "Timucua (Ocale, Potano)",
+    date: "July–August 1539",
+    desc: "Marched north through central Florida. Encountered fierce Timucua resistance. Chief Vitachuco attempted a surprise attack during negotiations and was captured. The region was noted for its large villages and corn stores.",
+    type: "conflict",
+    note: "Conflict — Chief Vitachuco captured"
+  },
+  {
+    id: 3,
+    name: "Anhaica (Apalachee Capital)",
+    lat: 30.47, lng: -84.28,
+    people: "Apalachee chiefdom",
+    date: "Oct 1539 – Mar 1540 (Winter Camp)",
+    desc: "Wintered at the Apalachee capital near present-day Tallahassee. The Apalachee were known as fierce warriors. A Spanish ship made contact here. De Soto learned of a wealthy chiefdom to the northeast called Cofitachequi.",
+    type: "stop"
+  },
+  {
+    id: 4,
+    name: "Ichisi",
+    lat: 32.82, lng: -83.88,
+    people: "Ichisi chiefdom",
+    date: "March 1540",
+    desc: "Peaceful reception by the Ichisi, a Muscogean-speaking chiefdom of central Georgia. Chief Ichisi sent a canoe of corn, turkeys, and dogs to greet De Soto. Provided guides northward.",
+    type: "peaceful",
+    note: "Peaceful — gifts and guides provided"
+  },
+  {
+    id: 5,
+    name: "Cofitachequi",
+    lat: 34.28, lng: -80.61,
+    people: "Cofitachequi chiefdom",
+    date: "May 1540",
+    desc: "A powerful chiefdom near present-day Camden, SC. The 'Lady of Cofitachequi' greeted De Soto across the Wateree River and gave pearls, food, and fine cloaks. Spanish found a vacant town — likely recently decimated by epidemic disease. De Soto took the Lady hostage as a guide.",
+    type: "peaceful",
+    note: "Peaceful — led by a female paramount chief"
+  },
+  {
+    id: 6,
+    name: "Joara (Xualla)",
+    lat: 35.80, lng: -81.72,
+    people: "Joara chiefdom (Catawba/Cherokee ancestors)",
+    date: "May–June 1540",
+    desc: "A major chiefdom in the Blue Ridge foothills of western North Carolina. The Lady of Cofitachequi escaped here into the mountains. De Soto rested and resupplied before crossing into the Appalachians.",
+    type: "stop"
+  },
+  {
+    id: 7,
+    name: "Chiaha",
+    lat: 35.88, lng: -83.50,
+    people: "Chiaha chiefdom (Cherokee ancestors)",
+    date: "June 1540",
+    desc: "Located on an island in the Little Tennessee River. The Chiaha provided food and canoes. De Soto demanded 30 women as servants, causing tension, but the situation was resolved peacefully. The expedition rested its horses here.",
+    type: "stop"
+  },
+  {
+    id: 8,
+    name: "Coosa (Little Egypt Site)",
+    lat: 34.55, lng: -84.72,
+    people: "Coosa paramount chiefdom",
+    date: "July–August 1540",
+    desc: "The most powerful chiefdom in the interior Southeast, comprising eight towns in NW Georgia. De Soto was received with great ceremony. The paramount chief of Coosa was taken hostage and forced to accompany the expedition south through his own territories.",
+    type: "stop"
+  },
+  {
+    id: 9,
+    name: "Atahachi / Tuskaloosa's Court",
+    lat: 32.62, lng: -86.40,
+    people: "Tuscaluza (Tuskaloosa) chiefdom",
+    date: "October 8–10, 1540",
+    desc: "De Soto met the imposing Chief Tuskaloosa, described as over 6 feet tall. The chief was forced to join the march. Spanish accounts describe him as dignified and contemptuous of his captors. He secretly planned a trap at Mabila.",
+    type: "stop"
+  },
+  {
+    id: 10,
+    name: "Battle of Mabila",
+    lat: 32.05, lng: -87.60,
+    people: "Tuskaloosa's warriors",
+    date: "October 18, 1540",
+    desc: "The bloodiest battle of the expedition. Tuskaloosa's warriors, hidden inside the fortified town of Mabila, ambushed the Spanish. The battle lasted all day. ~22 Spaniards and 148+ wounded; estimated 2,000–6,000 Native casualties. Chief Tuskaloosa died. Spanish lost horses, supplies, and pearls from Cofitachequi in the fires.",
+    type: "battle",
+    note: "Major Battle — De Soto's forces severely weakened"
+  },
+  {
+    id: 11,
+    name: "Chickasaw Territory",
+    lat: 34.32, lng: -89.02,
+    people: "Chickasaw nation",
+    date: "Dec 1540 – Mar 1541 (Winter Camp)",
+    desc: "De Soto wintered among the Chickasaw in northern Mississippi. He demanded 200 people as enslaved porters. Before dawn on March 4, 1541, the Chickasaw launched a devastating surprise attack — burning the camp and killing 12 soldiers, 57 horses, and 400 pigs. The expedition barely survived.",
+    type: "battle",
+    note: "Chickasaw Dawn Raid — expedition nearly destroyed"
+  },
+  {
+    id: 12,
+    name: "Mississippi River Crossing",
+    lat: 34.92, lng: -90.10,
+    people: "Quizquiz chiefdom",
+    date: "May–June 1541",
+    desc: "First Europeans to sight and cross the Mississippi River. The Quizquiz people were encountered on the eastern bank. De Soto had large flat-bottomed boats constructed over several weeks. A massive fleet of Casqui canoes threatened the crossing. The expedition reached Arkansas in late June 1541.",
+    type: "stop"
+  },
+  {
+    id: 13,
+    name: "Casqui (Parkin Site)",
+    lat: 35.33, lng: -90.56,
+    people: "Casqui chiefdom",
+    date: "July 1541",
+    desc: "Chief Casqui welcomed De Soto, hoping for alliance against his rival Pacaha. De Soto erected a large wooden cross on the chief's mound. The Casqui provided warriors and supplies. The Parkin Archaeological State Park in Arkansas preserves this site.",
+    type: "peaceful",
+    note: "Peaceful — alliance sought against Pacaha"
+  },
+  {
+    id: 14,
+    name: "Pacaha",
+    lat: 35.70, lng: -90.25,
+    people: "Pacaha chiefdom",
+    date: "July–August 1541",
+    desc: "Casqui's rival chiefdom in northeast Arkansas. Spanish forces raided Pacaha. De Soto ultimately mediated a peace between Casqui and Pacaha. Both chiefs provided guides for the journey west.",
+    type: "conflict",
+    note: "Conflict, then mediated peace"
+  },
+  {
+    id: 15,
+    name: "Tula",
+    lat: 35.42, lng: -94.35,
+    people: "Tula warriors (Caddo ancestors?)",
+    date: "October 1541",
+    desc: "Located near the Ouachita Mountains, possibly near present-day Fort Smith, AR. The Tula were ferocious fighters unlike any previously encountered — possibly using bison-hide shields. After a battle, De Soto withdrew eastward, realizing he could go no farther west toward Mexico on foot.",
+    type: "battle",
+    note: "Battle — De Soto turned back east"
+  },
+  {
+    id: 16,
+    name: "Autiamque (Winter Camp)",
+    lat: 34.68, lng: -92.30,
+    people: "Autiamque chiefdom",
+    date: "Winter 1541–1542",
+    desc: "De Soto wintered near present-day Little Rock, AR. He fell gravely ill with fever during this encampment. The expedition was running low on men and supplies. De Soto attempted diplomatic contact with the powerful Chief Quigualtam to the south, who replied with contempt.",
+    type: "stop"
+  },
+  {
+    id: 17,
+    name: "Guachoya — De Soto's Death",
+    lat: 32.18, lng: -91.10,
+    people: "Guachoya chiefdom",
+    date: "May 1542",
+    desc: "Hernando de Soto died of fever on May 21, 1542, near present-day Lake Village, AR or Ferriday, LA. To conceal his death from Natives who believed him immortal, his body was wrapped in mantles, weighted with sand, and sunk at night in the Mississippi River. Luis de Moscoso assumed command.",
+    type: "death"
+  },
+  {
+    id: 18,
+    name: "Quigualtam / Exit via the Mississippi",
+    lat: 31.55, lng: -91.40,
+    people: "Quigualtam (Natchez ancestors)",
+    date: "Summer–Fall 1542",
+    desc: "Moscoso led survivors back to the Mississippi and built seven brigantines. The Quigualtam pursued them with a massive fleet of war canoes for days downriver. After ~17 months, ~300 survivors reached Spanish settlements in Mexico in September 1543.",
+    type: "stop"
+  }
+];
+
+// Route coordinates in order
+const routeCoords = stops.map(s => [s.lat, s.lng]);
+
+// Map init
+const map = L.map('map', {
+  center: [33.0, -86.5],
+  zoom: 6,
+  zoomControl: true
+});
+
+// Tile layer — Stadia Alidade Smooth Dark for a historical feel
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18
+}).addTo(map);
+
+// Draw route
+L.polyline(routeCoords, {
+  color: '#e8a030',
+  weight: 3,
+  opacity: 0.75,
+  dashArray: '8, 4'
+}).addTo(map);
+
+// Marker colors
+function markerColor(type) {
+  if (type === 'battle') return '#e05050';
+  if (type === 'death') return '#4a90d9';
+  if (type === 'peaceful') return '#50c878';
+  if (type === 'conflict') return '#e09030';
+  return '#e8c87a';
+}
+function markerBorder(type) {
+  if (type === 'battle') return '#8b0000';
+  if (type === 'death') return '#1a5090';
+  if (type === 'peaceful') return '#1a6030';
+  if (type === 'conflict') return '#7a5010';
+  return '#8b6914';
+}
+
+const markers = [];
+
+stops.forEach((stop, i) => {
+  const color = markerColor(stop.type);
+  const border = markerBorder(stop.type);
+  const isLarge = ['battle','death'].includes(stop.type);
+
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="
+      background:${color};
+      border:2px solid ${border};
+      border-radius:50%;
+      box-shadow:0 2px 6px rgba(0,0,0,0.6);
+      color:#1a0e05;
+      font-family:Georgia,serif;
+      font-size:${isLarge ? '10px' : '9px'};
+      font-weight:bold;
+      height:${isLarge ? '28px' : '22px'};
+      line-height:${isLarge ? '24px' : '18px'};
+      text-align:center;
+      width:${isLarge ? '28px' : '22px'};
+    ">${stop.id}</div>`,
+    iconSize: [isLarge ? 28 : 22, isLarge ? 28 : 22],
+    iconAnchor: [isLarge ? 14 : 11, isLarge ? 14 : 11],
+    popupAnchor: [0, isLarge ? -16 : -13]
+  });
+
+  const popupContent = `
+    <div class="popup-title">${stop.id}. ${stop.name}</div>
+    <div class="popup-people">&#9670; ${stop.people}</div>
+    <div class="popup-date">&#128197; ${stop.date}</div>
+    <div class="popup-desc">${stop.desc}</div>
+    ${stop.note ? `<div class="${stop.type === 'peaceful' ? 'popup-peaceful' : 'popup-battle'}">&#9654; ${stop.note}</div>` : ''}
+  `;
+
+  const marker = L.marker([stop.lat, stop.lng], { icon })
+    .addTo(map)
+    .bindPopup(popupContent, { maxWidth: 280 });
+
+  marker.on('click', () => {
+    highlightCard(i);
+  });
+
+  markers.push(marker);
+});
+
+// Sidebar stop list
+const stopList = document.getElementById('stop-list');
+stops.forEach((stop, i) => {
+  const card = document.createElement('div');
+  card.className = 'stop-card';
+  card.id = `card-${i}`;
+  card.innerHTML = `
+    <div><span class="stop-num">${stop.id}</span><span class="stop-name">${stop.name}</span></div>
+    <div class="stop-people">${stop.people}</div>
+    <div class="stop-date">${stop.date}</div>
+  `;
+  card.addEventListener('click', () => {
+    map.setView([stop.lat, stop.lng], 8, { animate: true });
+    markers[i].openPopup();
+    highlightCard(i);
+  });
+  stopList.appendChild(card);
+});
+
+function highlightCard(idx) {
+  document.querySelectorAll('.stop-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`card-${idx}`);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+markers.forEach((m, i) => {
+  m.on('popupopen', () => highlightCard(i));
+});
+</script>
+</body>
+</html>
